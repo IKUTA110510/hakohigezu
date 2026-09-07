@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中学校数学 ワークシート用 箱ひげ図ジェネレーター</title>
+  <!-- 教科書風の美しい明朝体・ローマン体を再現するためのWebフォント -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Times+New+Roman&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #1a73e8;
+      --primary-hover: #1557b0;
+      --bg-surface: #f8fafc;
+      --bg-card: #ffffff;
+      --border-color: #cbd5e1;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --font-serif: "Times New Roman", "Noto Serif JP", "Yu Mincho", "游明朝", "MS P明朝", serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-surface);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background-color: #e0f2fe;
+      color: #0369a1;
+      font-weight: 600;
+    }
+
+    .app-layout {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .preview-card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 20px;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .preview-viewport {
+      background-color: #ffffff;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-x: auto;
+      min-height: 320px;
+    }
+
+    #chart-svg {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .controls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel-section {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .form-row-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      min-width: 0;
+    }
+
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #334155;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: #334155;
+    }
+
+    .btn-outline:hover {
+      background-color: #f1f5f9;
+      border-color: #94a3b8;
+    }
+
+    .btn-download {
+      background-color: #059669;
+      color: #ffffff;
+    }
+
+    .btn-download:hover {
+      background-color: #047857;
+    }
+
+    .btn-copy {
+      background-color: #4f46e5;
+      color: #ffffff;
+    }
+
+    .btn-copy:hover {
+      background-color: #4338ca;
+    }
+
+    .btn-danger {
+      background-color: #ef4444;
+      color: #ffffff;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+    }
+
+    .btn-danger:hover {
+      background-color: #dc2626;
+    }
+
+    .segmented-control {
+      display: flex;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      background-color: #f1f5f9;
+    }
+
+    .segmented-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .segmented-btn.active {
+      background: #ffffff;
+      color: var(--primary-color);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .series-item {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      background-color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+
+    .series-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .summary-preview-box {
+      background-color: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    .summary-preview-box span {
+      font-weight: 700;
+      color: #0f172a;
+      margin-right: 8px;
+    }
+
+    .helper-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .switch-mode-btn {
+      font-size: 0.75rem;
+      color: var(--primary-color);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+
+    /* トースト通知スタイル */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background-color: #1e293b;
+      color: #ffffff;
+      font-size: 0.9rem;
+      font-weight: 500;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .toast-success {
+      background-color: #065f46;
+      border: 1px solid #059669;
+    }
+
+    .toast-error {
+      background-color: #991b1b;
+      border: 1px solid #dc2626;
+    }
+
+    /* 右クリックコピー案内用モーダル */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #ffffff;
+      border-radius: 12px;
+      max-width: 680px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-image-preview {
+      max-height: 400px;
+      overflow: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      background: #f8fafc;
+      display: flex;
+      justify-content: center;
+    }
+
+    .modal-image-preview img {
+      max-width: 100%;
+      height: auto;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      cursor: context-menu;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>
+        箱ひげ図ジェネレーター
+        <span class="badge">中学校数学 準拠</span>
+      </h1>
+      <p style="font-size: 0.85rem; color: #64748b; margin-top: 4px;">
+        文部科学省の指導要領に準拠した四分位数計算・教科書完全一致スタイルの教材画像作成ツール
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn btn-outline" id="btn-load-sample">サンプル読込</button>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <main class="preview-card">
+      <div class="preview-header">
+        <div>
+          <h2 style="font-size: 1.1rem; font-weight: 700;">画像プレビュー</h2>
+          <span class="helper-text">右側の設定を変更するとリアルタイムに反映されます</span>
+        </div>
+        <div class="preview-actions">
+          <button class="btn btn-copy" id="btn-copy-image" title="クリップボードにコピー">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/>
+              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/>
+            </svg>
+            画像をコピー
+          </button>
+          <button class="btn btn-download" id="btn-download-png">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"/>
+            </svg>
+            高解像度PNG保存 (300dpi)
+          </button>
+          <button class="btn btn-outline" id="btn-download-svg">
+            SVG保存
+          </button>
+        </div>
+      </div>
+
+      <div class="preview-viewport" id="viewport">
+        <!-- SVGグラフ本体がここに動的レンダリングされます -->
+        <svg id="chart-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </main>
+
+    <aside class="controls-panel">
+      <!-- 表示・配色・向き設定 -->
+      <section class="panel-section">
+        <div class="section-title">
+          <span>表示スタイル</span>
+        </div>
+
+        <div class="form-group">
+          <label>向きの切り替え</label>
+          <div class="segmented-control" id="orientation-toggle">
+            <button type="button" class="segmented-btn active" data-value="horizontal">横向き</button>
+            <button type="button" class="segmented-btn" data-value="vertical">縦向き</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>印刷カラーモード</label>
+          <div class="segmented-control" id="color-mode-toggle">
+            <button type="button" class="segmented-btn active" data-value="color">水色グリッド (カラー)</button>
+            <button type="button" class="segmented-btn" data-value="monochrome">グレー (輪転機・白黒)</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="input-unit">単位 (省略可)</label>
+          <input type="text" id="input-unit" placeholder="例: (m), (点), (cm)" value="(m)">
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label for="input-font-size">目盛り数字サイズ</label>
+            <span id="font-size-val" style="font-size: 0.85rem; font-weight: 600; color: #475569;">20px</span>
+          </div>
+          <input type="range" id="input-font-size" min="12" max="36" step="1" value="20" style="width: 100%; accent-color: var(--primary-color);">
+          <span class="helper-text">ワークシートのサイズや印刷環境に合わせて調整</span>
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label for="input-name-font-size">データ名サイズ</label>
+            <span id="name-font-size-val" style="font-size: 0.85rem; font-weight: 600; color: #475569;">22px</span>
+          </div>
+          <input type="range" id="input-name-font-size" min="12" max="40" step="1" value="22" style="width: 100%; accent-color: var(--primary-color);">
+          <span class="helper-text">系列名（A, Bなど）の大きさを調整</span>
+        </div>
+      </section>
+
+      <!-- 目盛り設定 -->
+      <section class="panel-section">
+        <div class="section-title">
+          <span>目盛り・グリッド設定</span>
+          <button type="button" class="switch-mode-btn" id="btn-auto-scale">自動計算</button>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="scale-min">最小値 (始点)</label>
+            <input type="number" id="scale-min" step="any" value="0">
+          </div>
+          <div class="form-group">
+            <label for="scale-max">最大値 (終点)</label>
+            <input type="number" id="scale-max" step="any" value="25">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="scale-step">数値表示間隔</label>
+            <input type="number" id="scale-step" step="any" value="5">
+            <span class="helper-text">0, 5, 10...と数字を打つ間隔</span>
+          </div>
+          <div class="form-group">
+            <label for="scale-subdiv">1マスの値 (グリッド)</label>
+            <input type="number" id="scale-subdiv" step="any" value="1">
+            <span class="helper-text">グリッド線の最小間隔</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- データ系列設定 -->
+      <section class="panel-section">
+        <div class="section-title">
+          <span>データ系列 (箱ひげ図)</span>
+          <button type="button" class="btn btn-primary" id="btn-add-series" style="padding: 4px 10px; font-size: 0.8rem;">
+            + 箱ひげ図を追加
+          </button>
+        </div>
+
+        <div id="series-list" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- 各系列のカードが動的に挿入されます -->
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<!-- クリップボード制限環境用の右クリックコピーモーダル -->
+<div id="copy-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">画像のコピー</h3>
+      <button type="button" id="modal-close-btn" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.8rem;">✕ 閉じる</button>
+    </div>
+    <p style="font-size: 0.88rem; color: #475569;">
+      お使いのブラウザや表示環境のセキュリティ制約により自動コピーが制限されています。<br>
+      下の画像を<strong>右クリック</strong>（Macは二本指タップまたはControl+クリック）して<strong>「画像をコピー」</strong>を選択してください。
+    </p>
+    <div class="modal-image-preview">
+      <img id="modal-preview-img" alt="箱ひげ図プレビュー">
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+      <button type="button" id="modal-png-btn" class="btn btn-download">高解像度PNGを保存</button>
+      <button type="button" id="modal-ok-btn" class="btn btn-primary">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- トースト通知コンテナ -->
+<div id="toast-message" class="toast"></div>
+
+<script>
+  // 中学校数学用の初期サンプルデータ
+  const state = {
+    orientation: 'horizontal',
+    colorMode: 'color',
+    unit: '(m)',
+    fontSize: 20,
+    nameFontSize: 22,
+    scale: {
+      min: 0,
+      max: 25,
+      step: 5,
+      subdiv: 1
+    },
+    series: [
+      {
+        id: 's-1',
+        name: 'A',
+        mode: 'summary',
+        rawInput: '3, 4, 5, 8, 11, 12, 13, 15, 16',
+        summary: { min: 3, q1: 5, med: 11, q3: 13, max: 16 }
+      },
+      {
+        id: 's-2',
+        name: 'B',
+        mode: 'summary',
+        rawInput: '9, 10, 12, 13, 15, 17, 18, 19, 20',
+        summary: { min: 9, q1: 12, med: 15, q3: 18, max: 20 }
+      }
+    ]
+  };
+
+  /**
+   * 中学校学習指導要領（文部科学省方式）に完全準拠した四分位数計算
+   */
+  function calculateMextFiveNumberSummary(dataArray) {
+    if (!dataArray || dataArray.length === 0) {
+      return { min: 0, q1: 0, med: 0, q3: 0, max: 0, count: 0 };
+    }
+
+    const sorted = [...dataArray].sort((a, b) => a - b);
+    const n = sorted.length;
+
+    const getMedian = (arr) => {
+      const len = arr.length;
+      if (len === 0) return 0;
+      const mid = Math.floor(len / 2);
+      if (len % 2 !== 0) {
+        return arr[mid];
+      } else {
+        return (arr[mid - 1] + arr[mid]) / 2;
+      }
+    };
+
+    const min = sorted[0];
+    const max = sorted[n - 1];
+    const med = getMedian(sorted);
+
+    let lowerHalf = [];
+    let upperHalf = [];
+
+    if (n % 2 !== 0) {
+      const midIdx = Math.floor(n / 2);
+      lowerHalf = sorted.slice(0, midIdx);
+      upperHalf = sorted.slice(midIdx + 1);
+    } else {
+      const midIdx = n / 2;
+      lowerHalf = sorted.slice(0, midIdx);
+      upperHalf = sorted.slice(midIdx);
+    }
+
+    const q1 = getMedian(lowerHalf);
+    const q3 = getMedian(upperHalf);
+
+    return { min, q1, med, q3, max, count: n };
+  }
+
+  function parseRawInput(text) {
+    if (!text) return [];
+    const tokens = text.split(/[\s,、\t\n]+/);
+    const numbers = [];
+    for (const token of tokens) {
+      const trimmed = token.trim();
+      if (trimmed !== '') {
+        const num = parseFloat(trimmed);
+        if (!isNaN(num)) {
+          numbers.push(num);
+        }
+      }
+    }
+    return numbers;
+  }
+
+  function autoCalculateScale() {
+    let allMins = [];
+    let allMaxs = [];
+
+    state.series.forEach(s => {
+      if (s.mode === 'raw') {
+        const nums = parseRawInput(s.rawInput);
+        if (nums.length > 0) {
+          const sum = calculateMextFiveNumberSummary(nums);
+          allMins.push(sum.min);
+          allMaxs.push(sum.max);
+        }
+      } else {
+        allMins.push(s.summary.min);
+        allMaxs.push(s.summary.max);
+      }
+    });
+
+    if (allMins.length === 0) return;
+
+    const dataMin = Math.min(...allMins);
+    const dataMax = Math.max(...allMaxs);
+    const range = dataMax - dataMin || 10;
+
+    let roughStep = range / 5;
+    let magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+    let factor = roughStep / magnitude;
+
+    let step = magnitude;
+    if (factor > 5) step = 10 * magnitude;
+    else if (factor > 2) step = 5 * magnitude;
+    else if (factor > 1) step = 2 * magnitude;
+
+    let min = Math.floor(dataMin / step) * step;
+    let max = Math.ceil(dataMax / step) * step;
+
+    if (min === dataMin) min -= step;
+    if (max === dataMax) max += step;
+    if (min < 0 && dataMin >= 0) min = 0;
+
+    const subdiv = step >= 5 ? step / 5 : step;
+
+    state.scale.min = min;
+    state.scale.max = max;
+    state.scale.step = step;
+    state.scale.subdiv = subdiv;
+
+    document.getElementById('scale-min').value = state.scale.min;
+    document.getElementById('scale-max').value = state.scale.max;
+    document.getElementById('scale-step').value = state.scale.step;
+    document.getElementById('scale-subdiv').value = state.scale.subdiv;
+
+    renderChart();
+  }
+
+  function renderChart() {
+    const svg = document.getElementById('chart-svg');
+    const isHorizontal = state.orientation === 'horizontal';
+    const isColor = state.colorMode === 'color';
+    const fontSize = state.fontSize || 20;
+    const nameFontSize = state.nameFontSize || 22;
+
+    const gridColor = isColor ? '#0090d5' : '#71717a';
+    const gridLineWidth = 1.0;
+    const borderLineWidth = 1.5;
+    const boxStrokeColor = '#000000';
+    const boxStrokeWidth = 2.2;
+    const whiskerStrokeWidth = 2.2;
+    const capStrokeWidth = 2.2;
+    const fontColor = '#000000';
+
+    const scaleMin = state.scale.min;
+    const scaleMax = state.scale.max;
+    const scaleRange = scaleMax - scaleMin || 1;
+    const subdiv = state.scale.subdiv > 0 ? state.scale.subdiv : 1;
+    const step = state.scale.step > 0 ? state.scale.step : 5;
+
+    const numSubdivs = Math.round(scaleRange / subdiv);
+    const seriesCount = Math.max(state.series.length, 1);
+
+    // 文字列の概算幅を計算するヘルパー（全角=1em, 半角=0.6em）
+    const getTextWidth = (text, size) => {
+      if (!text) return 0;
+      let width = 0;
+      for (const ch of text) {
+        width += ch.charCodeAt(0) > 255 ? size : size * 0.6;
+      }
+      return width;
+    };
+
+    // 最長の系列名幅を計算
+    let maxNameWidth = 0;
+    state.series.forEach(s => {
+      const w = getTextWidth(s.name || '', nameFontSize);
+      if (w > maxNameWidth) maxNameWidth = w;
+    });
+
+    // 目盛り数値の最大桁幅および最初・最後のラベル幅
+    const firstValStr = String(scaleMin);
+    const lastValStr = String(scaleMax);
+    const firstLabelHalfWidth = getTextWidth(firstValStr, fontSize) / 2;
+    const lastLabelHalfWidth = getTextWidth(lastValStr, fontSize) / 2;
+    
+    let maxNumLabelWidth = 0;
+    for (let v = scaleMin; v <= scaleMax + 0.0001; v += step) {
+      const w = getTextWidth(String(Math.round(v * 1000) / 1000), fontSize);
+      if (w > maxNumLabelWidth) maxNumLabelWidth = w;
+    }
+
+    const unitText = state.unit ? ` ${state.unit}` : '';
+    const unitWidth = getTextWidth(unitText, fontSize);
+
+    let width, height, margin, plotWidth, plotHeight;
+
+    if (isHorizontal) {
+      const cellWidth = 32;
+      const rowHeight = Math.max(65, nameFontSize * 2.2);
+
+      // 左余白: 「データ名 + 隙間」と「最左目盛り数字のはみ出し」の両方をカバー
+      const nameSpacing = 16;
+      const neededLeft = Math.max(maxNameWidth + nameSpacing + 8, firstLabelHalfWidth + 12, 60);
+
+      // 右余白: 「最右目盛り数字の右半分 + 隙間 + 単位」が収まるように動的確保
+      const unitSpacing = fontSize * 0.4;
+      const neededRight = Math.max(lastLabelHalfWidth + (unitText ? (unitSpacing + unitWidth + 24) : 24), 60);
+
+      margin = { 
+        top: 20, 
+        right: neededRight, 
+        bottom: Math.max(45, fontSize + 25), 
+        left: neededLeft 
+      };
+      plotWidth = Math.max(numSubdivs * cellWidth, 400);
+      plotHeight = seriesCount * rowHeight;
+      width = plotWidth + margin.left + margin.right;
+      height = plotHeight + margin.top + margin.bottom;
+    } else {
+      const cellHeight = 32;
+      const colWidth = Math.max(70, nameFontSize * 2.4);
+      
+      // 縦向き時の左余白: 「数値目盛り」が収まるように動的計算
+      const neededLeft = Math.max(maxNumLabelWidth + 24, 65);
+
+      margin = { 
+        top: 45, 
+        right: 30, 
+        bottom: Math.max(50, nameFontSize + 28), 
+        left: neededLeft 
+      };
+      plotWidth = seriesCount * colWidth;
+      plotHeight = Math.max(numSubdivs * cellHeight, 350);
+      width = plotWidth + margin.left + margin.right;
+      height = plotHeight + margin.top + margin.bottom;
+    }
+
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+
+    let svgContent = '';
+    svgContent += `<rect x="0" y="0" width="${width}" height="${height}" fill="#ffffff" />`;
+
+    const valToPosH = (val) => margin.left + ((val - scaleMin) / scaleRange) * plotWidth;
+    const valToPosV = (val) => margin.top + plotHeight - ((val - scaleMin) / scaleRange) * plotHeight;
+
+    let gridLinesSvg = '';
+
+    if (isHorizontal) {
+      for (let i = 0; i <= numSubdivs; i++) {
+        const val = scaleMin + i * subdiv;
+        const x = valToPosH(val);
+        gridLinesSvg += `<line x1="${x}" y1="${margin.top}" x2="${x}" y2="${margin.top + plotHeight}" stroke="${gridColor}" stroke-width="${gridLineWidth}" />`;
+      }
+
+      for (let i = 0; i <= seriesCount; i++) {
+        const y = margin.top + i * (plotHeight / seriesCount);
+        const sWidth = (i === 0 || i === seriesCount) ? borderLineWidth : gridLineWidth;
+        gridLinesSvg += `<line x1="${margin.left}" y1="${y}" x2="${margin.left + plotWidth}" y2="${y}" stroke="${gridColor}" stroke-width="${sWidth}" />`;
+      }
+
+      gridLinesSvg += `<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + plotHeight}" stroke="${gridColor}" stroke-width="${borderLineWidth}" />`;
+      gridLinesSvg += `<line x1="${margin.left + plotWidth}" y1="${margin.top}" x2="${margin.left + plotWidth}" y2="${margin.top + plotHeight}" stroke="${gridColor}" stroke-width="${borderLineWidth}" />`;
+
+    } else {
+      for (let i = 0; i <= numSubdivs; i++) {
+        const val = scaleMin + i * subdiv;
+        const y = valToPosV(val);
+        gridLinesSvg += `<line x1="${margin.left}" y1="${y}" x2="${margin.left + plotWidth}" y2="${y}" stroke="${gridColor}" stroke-width="${gridLineWidth}" />`;
+      }
+
+      for (let i = 0; i <= seriesCount; i++) {
+        const x = margin.left + i * (plotWidth / seriesCount);
+        const sWidth = (i === 0 || i === seriesCount) ? borderLineWidth : gridLineWidth;
+        gridLinesSvg += `<line x1="${x}" y1="${margin.top}" x2="${x}" y2="${margin.top + plotHeight}" stroke="${gridColor}" stroke-width="${sWidth}" />`;
+      }
+
+      gridLinesSvg += `<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left + plotWidth}" y2="${margin.top}" stroke="${gridColor}" stroke-width="${borderLineWidth}" />`;
+      gridLinesSvg += `<line x1="${margin.left}" y1="${margin.top + plotHeight}" x2="${margin.left + plotWidth}" y2="${margin.top + plotHeight}" stroke="${gridColor}" stroke-width="${borderLineWidth}" />`;
+    }
+
+    svgContent += `<g id="grid-lines">${gridLinesSvg}</g>`;
+
+    let plotsSvg = '';
+
+    state.series.forEach((s, index) => {
+      let sum = s.summary;
+      if (s.mode === 'raw') {
+        const rawVals = parseRawInput(s.rawInput);
+        sum = calculateMextFiveNumberSummary(rawVals);
+      }
+
+      if (isHorizontal) {
+        const rowH = plotHeight / seriesCount;
+        const centerY = margin.top + index * rowH + rowH / 2;
+        const boxH = Math.min(rowH * 0.55, 34);
+        const capH = boxH * 0.65;
+
+        const xMin = valToPosH(sum.min);
+        const xQ1 = valToPosH(sum.q1);
+        const xMed = valToPosH(sum.med);
+        const xQ3 = valToPosH(sum.q3);
+        const xMax = valToPosH(sum.max);
+
+        plotsSvg += `<line x1="${xMin}" y1="${centerY}" x2="${xQ1}" y2="${centerY}" stroke="${boxStrokeColor}" stroke-width="${whiskerStrokeWidth}" />`;
+        plotsSvg += `<line x1="${xQ3}" y1="${centerY}" x2="${xMax}" y2="${centerY}" stroke="${boxStrokeColor}" stroke-width="${whiskerStrokeWidth}" />`;
+        plotsSvg += `<line x1="${xMin}" y1="${centerY - capH / 2}" x2="${xMin}" y2="${centerY + capH / 2}" stroke="${boxStrokeColor}" stroke-width="${capStrokeWidth}" stroke-linecap="square" />`;
+        plotsSvg += `<line x1="${xMax}" y1="${centerY - capH / 2}" x2="${xMax}" y2="${centerY + capH / 2}" stroke="${boxStrokeColor}" stroke-width="${capStrokeWidth}" stroke-linecap="square" />`;
+
+        const boxWidth = Math.max(xQ3 - xQ1, 0);
+        plotsSvg += `<rect x="${xQ1}" y="${centerY - boxH / 2}" width="${boxWidth}" height="${boxH}" fill="#ffffff" stroke="${boxStrokeColor}" stroke-width="${boxStrokeWidth}" />`;
+        plotsSvg += `<line x1="${xMed}" y1="${centerY - boxH / 2}" x2="${xMed}" y2="${centerY + boxH / 2}" stroke="${boxStrokeColor}" stroke-width="${boxStrokeWidth}" stroke-linecap="square" />`;
+        // グリッド線の左側に一定の隙間(14px)を空けて右揃え配置
+        plotsSvg += `<text x="${margin.left - 14}" y="${centerY + nameFontSize * 0.35}" font-family="var(--font-serif)" font-size="${nameFontSize}" font-style="normal" text-anchor="end" fill="${fontColor}">${s.name}</text>`;
+
+      } else {
+        const colW = plotWidth / seriesCount;
+        const centerX = margin.left + index * colW + colW / 2;
+        const boxW = Math.min(colW * 0.55, 34);
+        const capW = boxW * 0.65;
+
+        const yMin = valToPosV(sum.min);
+        const yQ1 = valToPosV(sum.q1);
+        const yMed = valToPosV(sum.med);
+        const yQ3 = valToPosV(sum.q3);
+        const yMax = valToPosV(sum.max);
+
+        plotsSvg += `<line x1="${centerX}" y1="${yMin}" x2="${centerX}" y2="${yQ1}" stroke="${boxStrokeColor}" stroke-width="${whiskerStrokeWidth}" />`;
+        plotsSvg += `<line x1="${centerX}" y1="${yQ3}" x2="${centerX}" y2="${yMax}" stroke="${boxStrokeColor}" stroke-width="${whiskerStrokeWidth}" />`;
+        plotsSvg += `<line x1="${centerX - capW / 2}" y1="${yMin}" x2="${centerX + capW / 2}" y2="${yMin}" stroke="${boxStrokeColor}" stroke-width="${capStrokeWidth}" stroke-linecap="square" />`;
+        plotsSvg += `<line x1="${centerX - capW / 2}" y1="${yMax}" x2="${centerX + capW / 2}" y2="${yMax}" stroke="${boxStrokeColor}" stroke-width="${capStrokeWidth}" stroke-linecap="square" />`;
+
+        const boxHeight = Math.max(yQ1 - yQ3, 0);
+        plotsSvg += `<rect x="${centerX - boxW / 2}" y="${yQ3}" width="${boxW}" height="${boxHeight}" fill="#ffffff" stroke="${boxStrokeColor}" stroke-width="${boxStrokeWidth}" />`;
+        plotsSvg += `<line x1="${centerX - boxW / 2}" y1="${yMed}" x2="${centerX + boxW / 2}" y2="${yMed}" stroke="${boxStrokeColor}" stroke-width="${boxStrokeWidth}" stroke-linecap="square" />`;
+        plotsSvg += `<text x="${centerX}" y="${margin.top + plotHeight + nameFontSize + 8}" font-family="var(--font-serif)" font-size="${nameFontSize}" font-style="normal" text-anchor="middle" fill="${fontColor}">${s.name}</text>`;
+      }
+    });
+
+    svgContent += `<g id="box-plots">${plotsSvg}</g>`;
+
+    let labelsSvg = '';
+
+    if (isHorizontal) {
+      let lastVal = scaleMin;
+      let lastValX = margin.left;
+      for (let v = scaleMin; v <= scaleMax + 0.0001; v += step) {
+        const roundedVal = Math.round(v * 1000) / 1000;
+        const x = valToPosH(roundedVal);
+        labelsSvg += `<text x="${x}" y="${margin.top + plotHeight + fontSize + 4}" font-family="var(--font-serif)" font-size="${fontSize}" text-anchor="middle" fill="${fontColor}">${roundedVal}</text>`;
+        lastVal = roundedVal;
+        lastValX = x;
+      }
+      if (unitText) {
+        // 最後の目盛り数字の右端から重ならない位置に動的配置
+        const currentLastValHalfWidth = getTextWidth(String(lastVal), fontSize) / 2;
+        const unitX = lastValX + currentLastValHalfWidth + Math.max(fontSize * 0.35, 8);
+        labelsSvg += `<text x="${unitX}" y="${margin.top + plotHeight + fontSize + 4}" font-family="var(--font-serif)" font-size="${fontSize}" text-anchor="start" fill="${fontColor}">${unitText}</text>`;
+      }
+    } else {
+      for (let v = scaleMin; v <= scaleMax + 0.0001; v += step) {
+        const roundedVal = Math.round(v * 1000) / 1000;
+        const y = valToPosV(roundedVal);
+        labelsSvg += `<text x="${margin.left - 12}" y="${y + fontSize * 0.35}" font-family="var(--font-serif)" font-size="${fontSize}" text-anchor="end" fill="${fontColor}">${roundedVal}</text>`;
+      }
+      if (unitText) {
+        labelsSvg += `<text x="${margin.left - 12}" y="${margin.top - 14}" font-family="var(--font-serif)" font-size="${Math.max(14, fontSize * 0.9)}" text-anchor="end" fill="${fontColor}">${unitText}</text>`;
+      }
+    }
+
+    svgContent += `<g id="scale-labels">${labelsSvg}</g>`;
+
+    svg.innerHTML = svgContent;
+  }
+
+  function renderSeriesControls() {
+    const list = document.getElementById('series-list');
+    list.innerHTML = '';
+
+    state.series.forEach((s, index) => {
+      const item = document.createElement('div');
+      item.className = 'series-item';
+
+      let summary = s.summary;
+      if (s.mode === 'raw') {
+        const rawVals = parseRawInput(s.rawInput);
+        summary = calculateMextFiveNumberSummary(rawVals);
+      }
+
+      item.innerHTML = `
+        <div class="series-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="font-weight: 700;">名前:</label>
+            <input type="text" class="series-name-input" value="${s.name}" style="width: 70px; font-weight: bold; text-align: center;">
+            <span class="badge" style="font-size: 0.7rem; background:#f1f5f9; color:#475569;">
+              ${s.mode === 'raw' ? '生データ' : '5数要約'}
+            </span>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <button type="button" class="switch-mode-btn toggle-input-mode-btn">
+              ${s.mode === 'raw' ? '5数要約を直接入力' : 'データ集合を入力'}
+            </button>
+            ${state.series.length > 1 ? `<button type="button" class="btn btn-danger delete-series-btn">削除</button>` : ''}
+          </div>
+        </div>
+
+        ${s.mode === 'raw' ? `
+          <div class="form-group">
+            <label>データ集合 (カンマ・改行・スペース区切り / Excel対応)</label>
+            <textarea class="raw-data-textarea" placeholder="例: 12, 14, 15, 18, 22...">${s.rawInput}</textarea>
+            <span class="helper-text">データ数: ${parseRawInput(s.rawInput).length} 個</span>
+          </div>
+        ` : `
+          <div class="form-row" style="margin-bottom: 8px;">
+            <div class="form-group">
+              <label title="最小値">最小値</label>
+              <input type="number" class="sum-input-min" value="${summary.min}" step="any">
+            </div>
+            <div class="form-group">
+              <label title="最大値">最大値</label>
+              <input type="number" class="sum-input-max" value="${summary.max}" step="any">
+            </div>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label title="第1四分位数 (Q1)">Q1 (第1)</label>
+              <input type="number" class="sum-input-q1" value="${summary.q1}" step="any">
+            </div>
+            <div class="form-group">
+              <label title="中央値 (Q2)">中央値 (Q2)</label>
+              <input type="number" class="sum-input-med" value="${summary.med}" step="any">
+            </div>
+            <div class="form-group">
+              <label title="第3四分位数 (Q3)">Q3 (第3)</label>
+              <input type="number" class="sum-input-q3" value="${summary.q3}" step="any">
+            </div>
+          </div>
+        `}
+
+        <div class="summary-preview-box">
+          <div><span>最小:</span>${summary.min} <span>Q1:</span>${summary.q1} <span>中央:</span>${summary.med} <span>Q3:</span>${summary.q3} <span>最大:</span>${summary.max}</div>
+        </div>
+      `;
+
+      const nameInput = item.querySelector('.series-name-input');
+      nameInput.addEventListener('input', (e) => {
+        s.name = e.target.value;
+        renderChart();
+      });
+
+      const toggleModeBtn = item.querySelector('.toggle-input-mode-btn');
+      toggleModeBtn.addEventListener('click', () => {
+        if (s.mode === 'raw') {
+          const vals = parseRawInput(s.rawInput);
+          s.summary = calculateMextFiveNumberSummary(vals);
+          s.mode = 'summary';
+        } else {
+          s.mode = 'raw';
+        }
+        renderSeriesControls();
+        renderChart();
+      });
+
+      if (s.mode === 'raw') {
+        const textarea = item.querySelector('.raw-data-textarea');
+        textarea.addEventListener('input', (e) => {
+          s.rawInput = e.target.value;
+          renderSeriesControls();
+          renderChart();
+        });
+      } else {
+        ['min', 'q1', 'med', 'q3', 'max'].forEach(key => {
+          const input = item.querySelector(`.sum-input-${key}`);
+          input.addEventListener('input', (e) => {
+            s.summary[key] = parseFloat(e.target.value) || 0;
+            renderChart();
+            item.querySelector('.summary-preview-box').innerHTML = `
+              <div><span>最小:</span>${s.summary.min} <span>Q1:</span>${s.summary.q1} <span>中央:</span>${s.summary.med} <span>Q3:</span>${s.summary.q3} <span>最大:</span>${s.summary.max}</div>
+            `;
+          });
+        });
+      }
+
+      const delBtn = item.querySelector('.delete-series-btn');
+      if (delBtn) {
+        delBtn.addEventListener('click', () => {
+          state.series.splice(index, 1);
+          renderSeriesControls();
+          renderChart();
+        });
+      }
+
+      list.appendChild(item);
+    });
+  }
+
+  function showToast(message, isError = false) {
+    const toast = document.getElementById('toast-message');
+    toast.textContent = message;
+    toast.className = `toast ${isError ? 'toast-error' : 'toast-success'} show`;
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3200);
+  }
+
+  // 高解像度Canvas BlobとDataURLを生成
+  function createHighResImageBlob(callback) {
+    const svgElement = document.getElementById('chart-svg');
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const URL = window.URL || window.webkitURL || window;
+    const blobURL = URL.createObjectURL(blob);
+
+    const img = new Image();
+    img.onload = () => {
+      const scaleFactor = 3;
+      const canvas = document.createElement('canvas');
+      canvas.width = svgElement.viewBox.baseVal.width * scaleFactor;
+      canvas.height = svgElement.viewBox.baseVal.height * scaleFactor;
+
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scaleFactor, scaleFactor);
+      ctx.drawImage(img, 0, 0);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      canvas.toBlob((pngBlob) => {
+        URL.revokeObjectURL(blobURL);
+        callback(pngBlob, dataUrl);
+      }, 'image/png');
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(blobURL);
+      showToast('画像の生成に失敗しました', true);
+    };
+    img.src = blobURL;
+  }
+
+  // 右クリックコピー案内モーダルを表示
+  function openCopyFallbackModal(dataUrl) {
+    const modal = document.getElementById('copy-modal');
+    const previewImg = document.getElementById('modal-preview-img');
+    previewImg.src = dataUrl;
+    modal.classList.add('active');
+  }
+
+  function closeCopyFallbackModal() {
+    const modal = document.getElementById('copy-modal');
+    modal.classList.remove('active');
+  }
+
+  document.getElementById('modal-close-btn').addEventListener('click', closeCopyFallbackModal);
+  document.getElementById('modal-ok-btn').addEventListener('click', closeCopyFallbackModal);
+  document.getElementById('modal-png-btn').addEventListener('click', () => {
+    document.getElementById('btn-download-png').click();
+    closeCopyFallbackModal();
+  });
+
+  // クリップボードへ画像コピー（iframe等のセキュリティ制限に対応したフォールバック付き）
+  document.getElementById('btn-copy-image').addEventListener('click', () => {
+    createHighResImageBlob((pngBlob, dataUrl) => {
+      if (!pngBlob) {
+        showToast('画像の変換に失敗しました', true);
+        return;
+      }
+
+      // 1. execCommand('copy') による画像コピー試行
+      let execCommandSuccess = false;
+      try {
+        const copyDiv = document.createElement('div');
+        copyDiv.contentEditable = 'true';
+        copyDiv.style.position = 'fixed';
+        copyDiv.style.left = '-9999px';
+        const copyImg = document.createElement('img');
+        copyImg.src = dataUrl;
+        copyDiv.appendChild(copyImg);
+        document.body.appendChild(copyDiv);
+
+        const range = document.createRange();
+        range.selectNodeContents(copyDiv);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        execCommandSuccess = document.execCommand('copy');
+        document.body.removeChild(copyDiv);
+        sel.removeAllRanges();
+      } catch (e) {
+        execCommandSuccess = false;
+      }
+
+      if (execCommandSuccess) {
+        showToast('画像をクリップボードにコピーしました！ (Ctrl+Vで貼付できます)');
+        return;
+      }
+
+      // 2. Clipboard API 試行（Permissions Policy 等で拒否された場合はモーダルへフォールバック）
+      if (navigator.clipboard && window.ClipboardItem) {
+        const item = new ClipboardItem({ 'image/png': pngBlob });
+        navigator.clipboard.write([item]).then(() => {
+          showToast('画像をクリップボードにコピーしました！ (Ctrl+Vで貼付できます)');
+        }).catch(() => {
+          // Permissions Policy でブロックされた場合、右クリックコピー用モーダルを表示
+          openCopyFallbackModal(dataUrl);
+        });
+      } else {
+        openCopyFallbackModal(dataUrl);
+      }
+    });
+  });
+
+  // 高解像度（300dpi相当）PNGエクスポート
+  document.getElementById('btn-download-png').addEventListener('click', () => {
+    createHighResImageBlob((pngBlob) => {
+      if (!pngBlob) return;
+      const URL = window.URL || window.webkitURL || window;
+      const downloadLink = document.createElement('a');
+      downloadLink.download = `箱ひげ図_${state.orientation}_${Date.now()}.png`;
+      downloadLink.href = URL.createObjectURL(pngBlob);
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(downloadLink.href);
+      showToast('PNG画像をダウンロードしました');
+    });
+  });
+
+  // ベクターSVGエクスポート
+  document.getElementById('btn-download-svg').addEventListener('click', () => {
+    const svgElement = document.getElementById('chart-svg');
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const URL = window.URL || window.webkitURL || window;
+    const downloadLink = document.createElement('a');
+    downloadLink.download = `箱ひげ図_${state.orientation}_${Date.now()}.svg`;
+    downloadLink.href = URL.createObjectURL(blob);
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+  });
+
+  // 向き切り替え
+  document.querySelectorAll('#orientation-toggle .segmented-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('#orientation-toggle .segmented-btn').forEach(b => b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      state.orientation = e.currentTarget.dataset.value;
+      renderChart();
+    });
+  });
+
+  // カラーモード切り替え
+  document.querySelectorAll('#color-mode-toggle .segmented-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('#color-mode-toggle .segmented-btn').forEach(b => b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      state.colorMode = e.currentTarget.dataset.value;
+      renderChart();
+    });
+  });
+
+  // 単位
+  document.getElementById('input-unit').addEventListener('input', (e) => {
+    state.unit = e.target.value;
+    renderChart();
+  });
+
+  const fontSizeInput = document.getElementById('input-font-size');
+  const fontSizeDisplay = document.getElementById('font-size-val');
+  if (fontSizeInput) {
+    fontSizeInput.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      state.fontSize = val;
+      if (fontSizeDisplay) {
+        fontSizeDisplay.textContent = `${val}px`;
+      }
+      renderChart();
+    });
+  }
+
+  const nameFontSizeInput = document.getElementById('input-name-font-size');
+  const nameFontSizeDisplay = document.getElementById('name-font-size-val');
+  if (nameFontSizeInput) {
+    nameFontSizeInput.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      state.nameFontSize = val;
+      if (nameFontSizeDisplay) {
+        nameFontSizeDisplay.textContent = `${val}px`;
+      }
+      renderChart();
+    });
+  }
+
+  // 目盛り入力
+  ['min', 'max', 'step', 'subdiv'].forEach(key => {
+    document.getElementById(`scale-${key}`).addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (!isNaN(val)) {
+        state.scale[key] = val;
+        renderChart();
+      }
+    });
+  });
+
+  // 目盛り自動算出ボタン
+  document.getElementById('btn-auto-scale').addEventListener('click', autoCalculateScale);
+
+  // 系列追加ボタン
+  document.getElementById('btn-add-series').addEventListener('click', () => {
+    const nextCode = String.fromCharCode(65 + (state.series.length % 26));
+    const name = state.series.length >= 26 ? `G${state.series.length + 1}` : nextCode;
+    state.series.push({
+      id: `s-${Date.now()}`,
+      name: name,
+      mode: 'summary',
+      rawInput: '5, 8, 10, 14, 18',
+      summary: { min: 5, q1: 8, med: 10, q3: 14, max: 18 }
+    });
+    renderSeriesControls();
+    renderChart();
+  });
+
+  // サンプルデータ読み込みボタン
+  document.getElementById('btn-load-sample').addEventListener('click', () => {
+    state.orientation = 'horizontal';
+    state.colorMode = 'color';
+    state.unit = '(m)';
+    state.fontSize = 20;
+    state.nameFontSize = 22;
+    state.scale = { min: 0, max: 25, step: 5, subdiv: 1 };
+    state.series = [
+      {
+        id: 's-1',
+        name: 'A',
+        mode: 'summary',
+        rawInput: '3, 4, 5, 8, 11, 12, 13, 15, 16',
+        summary: { min: 3, q1: 5, med: 11, q3: 13, max: 16 }
+      },
+      {
+        id: 's-2',
+        name: 'B',
+        mode: 'summary',
+        rawInput: '9, 10, 12, 13, 15, 17, 18, 19, 20',
+        summary: { min: 9, q1: 12, med: 15, q3: 18, max: 20 }
+      }
+    ];
+
+    document.querySelector('#orientation-toggle [data-value="horizontal"]').click();
+    document.querySelector('#color-mode-toggle [data-value="color"]').click();
+    document.getElementById('input-unit').value = state.unit;
+    if (document.getElementById('input-font-size')) {
+      document.getElementById('input-font-size').value = 20;
+    }
+    if (document.getElementById('font-size-val')) {
+      document.getElementById('font-size-val').textContent = '20px';
+    }
+    if (document.getElementById('input-name-font-size')) {
+      document.getElementById('input-name-font-size').value = 22;
+    }
+    if (document.getElementById('name-font-size-val')) {
+      document.getElementById('name-font-size-val').textContent = '22px';
+    }
+    document.getElementById('scale-min').value = state.scale.min;
+    document.getElementById('scale-max').value = state.scale.max;
+    document.getElementById('scale-step').value = state.scale.step;
+    document.getElementById('scale-subdiv').value = state.scale.subdiv;
+
+    renderSeriesControls();
+    renderChart();
+  });
+
+  // 初期化実行
+  renderSeriesControls();
+  renderChart();
+</script>
+</body>
+</html>
